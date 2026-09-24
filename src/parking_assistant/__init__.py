@@ -1,0 +1,2 @@
+"""Parking Assistant application package."""
+

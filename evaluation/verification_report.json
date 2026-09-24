@@ -1,0 +1,8 @@
+{
+  "unit_passed": 119,
+  "integration_skipped": 5,
+  "coverage_percent": 91.28,
+  "integration_passed": 5,
+  "ruff_passed": true,
+  "mypy_passed": true
+}

@@ -1,0 +1,10 @@
+{
+  "pii_leakage_rate": 0.0,
+  "blocked_malicious_request_rate": 1.0,
+  "benign_request_pass_rate": 1.0,
+  "cross_session_leakage_count": 0,
+  "total_cases": 20,
+  "passed": 20,
+  "failed": 0,
+  "failed_case_ids": []
+}

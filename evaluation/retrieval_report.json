@@ -1,0 +1,22 @@
+{
+  "dataset_size": 18,
+  "k": 5,
+  "application_mode": "hybrid",
+  "results": {
+    "semantic": {
+      "precision_at_k": 0.24444444444444446,
+      "recall_at_k": 1.0,
+      "mrr": 0.7546296296296297
+    },
+    "bm25": {
+      "precision_at_k": 0.2222222222222222,
+      "recall_at_k": 0.9444444444444444,
+      "mrr": 0.712962962962963
+    },
+    "hybrid": {
+      "precision_at_k": 0.24444444444444446,
+      "recall_at_k": 1.0,
+      "mrr": 0.8074074074074074
+    }
+  }
+}

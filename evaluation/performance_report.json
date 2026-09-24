@@ -1,0 +1,60 @@
+{
+  "requested_samples_per_operation": 3,
+  "operations": [
+    {
+      "operation": "hybrid_retrieval",
+      "sample_count": 3,
+      "successes": 3,
+      "failures": 0,
+      "average_ms": 411.0538000240922,
+      "p50_ms": 207.38940010778606,
+      "p95_ms": 773.9245501346886,
+      "network_dependent": true
+    },
+    {
+      "operation": "static_rag_request",
+      "sample_count": 3,
+      "successes": 3,
+      "failures": 0,
+      "average_ms": 1634.6501333173364,
+      "p50_ms": 1552.9465000145137,
+      "p95_ms": 1868.7858399935067,
+      "network_dependent": true
+    },
+    {
+      "operation": "dynamic_postgresql_request",
+      "sample_count": 3,
+      "successes": 3,
+      "failures": 0,
+      "average_ms": 1694.8298999729257,
+      "p50_ms": 4.550399957224727,
+      "p95_ms": 4569.306299975142,
+      "network_dependent": false
+    },
+    {
+      "operation": "intent_classification",
+      "sample_count": 3,
+      "successes": 3,
+      "failures": 0,
+      "average_ms": 1285.337400001784,
+      "p50_ms": 906.9062999915332,
+      "p95_ms": 1986.0045901034027,
+      "network_dependent": true
+    },
+    {
+      "operation": "complete_assistant_request",
+      "sample_count": 3,
+      "successes": 3,
+      "failures": 0,
+      "average_ms": 873.7198001084229,
+      "p50_ms": 865.3811002150178,
+      "p95_ms": 1005.3327201167122,
+      "network_dependent": true
+    }
+  ],
+  "notes": [
+    "OpenAI and Weaviate network latency is environment-dependent, not deterministic.",
+    "PostgreSQL measurements use the configured local Stage 1 database.",
+    "Tracing is disabled during the benchmark to avoid observability overhead."
+  ]
+}

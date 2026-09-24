@@ -1,0 +1,18 @@
+{"query":"Where is Central Station Parking located?","relevant_document_ids":["central-station-location-access"],"category":"location"}
+{"query":"What address should I put in my navigation?","relevant_document_ids":["central-station-location-access"],"category":"location"}
+{"query":"How do cars enter and leave the parking facility?","relevant_document_ids":["central-station-location-access"],"category":"location"}
+{"query":"What kinds of parking spaces are provided?","relevant_document_ids":["central-station-overview"],"category":"overview"}
+{"query":"Is this car park intended for station passengers?","relevant_document_ids":["central-station-overview"],"category":"overview"}
+{"query":"Does sending a booking request guarantee my space?","relevant_document_ids":["central-station-booking-policy","central-station-faq"],"category":"booking_policy"}
+{"query":"What details are needed to request a booking?","relevant_document_ids":["central-station-booking-policy"],"category":"booking_policy"}
+{"query":"When does a reservation become confirmed?","relevant_document_ids":["central-station-booking-policy","central-station-faq"],"category":"booking_policy"}
+{"query":"How do I cancel a confirmed booking?","relevant_document_ids":["central-station-cancellation-policy"],"category":"cancellation_policy"}
+{"query":"Are cancellation fees or refunds guaranteed?","relevant_document_ids":["central-station-cancellation-policy"],"category":"cancellation_policy"}
+{"query":"Can I park a trailer or oversized commercial vehicle?","relevant_document_ids":["central-station-vehicle-restrictions"],"category":"vehicle_restrictions"}
+{"query":"Where should motorcycles park?","relevant_document_ids":["central-station-vehicle-restrictions"],"category":"vehicle_restrictions"}
+{"query":"May I use an EV bay without charging?","relevant_document_ids":["central-station-vehicle-restrictions"],"category":"vehicle_restrictions"}
+{"query":"Are accessible spaces close to the station walkway?","relevant_document_ids":["central-station-accessibility-security"],"category":"accessibility_security"}
+{"query":"What security and safety measures are at the car park?","relevant_document_ids":["central-station-accessibility-security"],"category":"accessibility_security"}
+{"query":"Who can help if parking equipment is broken?","relevant_document_ids":["central-station-faq"],"category":"faq"}
+{"query":"Do you have electric car spots?","relevant_document_ids":["central-station-faq","central-station-overview"],"category":"faq"}
+{"query":"Where do I go and what are the rules?","relevant_document_ids":["central-station-location-access","central-station-vehicle-restrictions"],"category":"ambiguous"}

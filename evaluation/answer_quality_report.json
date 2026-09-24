@@ -1,0 +1,228 @@
+{
+  "dataset_size": 12,
+  "completed": 12,
+  "failures": 0,
+  "average_correctness": 1.0,
+  "average_groundedness": 1.0,
+  "average_relevance": 1.0,
+  "results": [
+    {
+      "case_id": "location",
+      "question": "Where is Central Station Parking located?",
+      "answer": "Central Station Parking is located at 15 Railway Square, Yerevan, beside the main station approach.",
+      "source_document_ids": [
+        "central-station-overview",
+        "central-station-location-access",
+        "central-station-accessibility-security",
+        "central-station-faq",
+        "central-station-booking-policy"
+      ],
+      "judgment": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "relevance": 1.0,
+        "rationale": "The answer correctly states the location of Central Station Parking as 15 Railway Square, Yerevan, and mentions it is beside the main station approach, which exactly matches the reference facts. There are no factual errors or irrelevant information."
+      }
+    },
+    {
+      "case_id": "vehicle-entry",
+      "question": "How do cars enter and leave the parking facility?",
+      "answer": "Cars enter the parking facility from Railway Square by following blue parking signs and using the marked entrance lane. They leave via a separate exit lane that returns traffic to Railway Square.",
+      "source_document_ids": [
+        "central-station-overview",
+        "central-station-vehicle-restrictions",
+        "central-station-faq",
+        "central-station-accessibility-security",
+        "central-station-location-access"
+      ],
+      "judgment": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "relevance": 1.0,
+        "rationale": "The answer correctly states that cars enter from Railway Square using the marked entrance lane and leave via a separate exit lane returning to Railway Square, which matches the reference facts exactly. The mention of blue parking signs is additional but does not contradict or detract from the factual content, and the answer directly addresses the question without irrelevant information."
+      }
+    },
+    {
+      "case_id": "space-types",
+      "question": "What kinds of parking spaces are provided?",
+      "answer": "The parking facility provides standard, accessible, electric-vehicle, and motorcycle parking spaces.",
+      "source_document_ids": [
+        "central-station-overview",
+        "central-station-faq",
+        "central-station-booking-policy",
+        "central-station-vehicle-restrictions",
+        "central-station-accessibility-security"
+      ],
+      "judgment": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "relevance": 1.0,
+        "rationale": "The answer correctly lists all the types of parking spaces provided as stated in the reference facts, without adding or omitting any information, and directly addresses the question."
+      }
+    },
+    {
+      "case_id": "booking-confirmation",
+      "question": "Does sending a booking request guarantee my space?",
+      "answer": "No. Sending a booking request does not guarantee a space. A space is reserved only after explicit confirmation from the system.",
+      "source_document_ids": [
+        "central-station-booking-policy",
+        "central-station-faq",
+        "central-station-cancellation-policy",
+        "central-station-vehicle-restrictions",
+        "central-station-accessibility-security"
+      ],
+      "judgment": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "relevance": 1.0,
+        "rationale": "The answer correctly states that sending a booking request does not guarantee a space and that a space is reserved only after explicit confirmation, which directly aligns with the provided reference facts. The answer is fully supported by the facts and directly addresses the question without any irrelevant information."
+      }
+    },
+    {
+      "case_id": "booking-details",
+      "question": "What details are needed to request a booking?",
+      "answer": "To request a booking, you need to provide the intended facility, arrival and departure time, and required space type.",
+      "source_document_ids": [
+        "central-station-booking-policy",
+        "central-station-cancellation-policy",
+        "central-station-faq",
+        "central-station-vehicle-restrictions",
+        "central-station-overview"
+      ],
+      "judgment": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "relevance": 1.0,
+        "rationale": "The answer correctly lists all the details needed to request a booking as stated in the reference facts: intended facility, arrival and departure time, and required space type. It is fully supported by the provided information and directly addresses the question without any extraneous content."
+      }
+    },
+    {
+      "case_id": "cancellation",
+      "question": "How do I cancel a confirmed booking?",
+      "answer": "To cancel a confirmed booking, submit a cancellation request before the confirmed arrival time using the same service through which the booking was made. The cancellation is complete only after the service displays a cancellation confirmation.",
+      "source_document_ids": [
+        "central-station-booking-policy",
+        "central-station-cancellation-policy",
+        "central-station-faq",
+        "central-station-overview",
+        "central-station-location-access"
+      ],
+      "judgment": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "relevance": 1.0,
+        "rationale": "The answer accurately states that to cancel a confirmed booking, one must submit a cancellation request before the confirmed arrival time through the same booking service, and that cancellation is complete only after the service displays confirmation. All claims are directly supported by the reference facts and the answer is fully relevant to the question without any extraneous information."
+      }
+    },
+    {
+      "case_id": "cancellation-terms",
+      "question": "Are cancellation fees or refunds guaranteed?",
+      "answer": "Cancellation fees or refunds are not guaranteed. Any applicable fee or refund depends on the current booking terms shown during confirmation.",
+      "source_document_ids": [
+        "central-station-cancellation-policy",
+        "central-station-faq",
+        "central-station-booking-policy",
+        "central-station-vehicle-restrictions",
+        "central-station-overview"
+      ],
+      "judgment": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "relevance": 1.0,
+        "rationale": "The answer correctly states that cancellation fees or refunds are not guaranteed and that any applicable fees or refunds depend on the current booking terms shown during confirmation, which aligns exactly with the reference facts. It directly addresses the question without adding irrelevant information."
+      }
+    },
+    {
+      "case_id": "vehicle-restrictions",
+      "question": "Can I park a trailer or oversized commercial vehicle?",
+      "answer": "Trailers and oversized commercial vehicles are not permitted in the facility.",
+      "source_document_ids": [
+        "central-station-vehicle-restrictions",
+        "central-station-faq",
+        "central-station-accessibility-security",
+        "central-station-overview",
+        "central-station-booking-policy"
+      ],
+      "judgment": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "relevance": 1.0,
+        "rationale": "The answer directly states that trailers and oversized commercial vehicles are not permitted, which exactly matches the reference fact. There are no factual errors or irrelevant information."
+      }
+    },
+    {
+      "case_id": "motorcycles",
+      "question": "Where should motorcycles park?",
+      "answer": "Motorcycles should park in marked motorcycle spaces.",
+      "source_document_ids": [
+        "central-station-vehicle-restrictions",
+        "central-station-faq",
+        "central-station-accessibility-security",
+        "central-station-overview",
+        "central-station-location-access"
+      ],
+      "judgment": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "relevance": 1.0,
+        "rationale": "The answer directly states that motorcycles should park in marked motorcycle spaces, which exactly matches the reference fact. There are no factual errors or irrelevant information."
+      }
+    },
+    {
+      "case_id": "ev-bay",
+      "question": "May I use an EV bay without charging?",
+      "answer": "Electric-vehicle spaces are reserved for compatible vehicles using the charging area. Using an EV bay without charging is not permitted.",
+      "source_document_ids": [
+        "central-station-vehicle-restrictions",
+        "central-station-faq",
+        "central-station-booking-policy",
+        "central-station-accessibility-security",
+        "central-station-overview"
+      ],
+      "judgment": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "relevance": 1.0,
+        "rationale": "The answer correctly states that EV spaces are reserved for compatible vehicles using the charging area, directly reflecting the reference fact. It explicitly answers the question by stating that using an EV bay without charging is not permitted, which is a reasonable and supported interpretation of the reservation rule. The answer is fully relevant and contains no extraneous information."
+      }
+    },
+    {
+      "case_id": "accessibility",
+      "question": "Are accessible spaces close to the station walkway?",
+      "answer": "Yes, accessible spaces are positioned near the pedestrian route to the station walkway.",
+      "source_document_ids": [
+        "central-station-accessibility-security",
+        "central-station-overview",
+        "central-station-location-access",
+        "central-station-booking-policy",
+        "central-station-faq"
+      ],
+      "judgment": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "relevance": 1.0,
+        "rationale": "The answer correctly states that accessible spaces are positioned near the pedestrian route to the station, which directly aligns with the reference fact. It is fully supported by the facts and directly addresses the question without any irrelevant information."
+      }
+    },
+    {
+      "case_id": "security",
+      "question": "What security and safety measures are at the car park?",
+      "answer": "The car park has lighting, marked pedestrian paths, emergency contact points, and routine staff patrols as security and safety measures. Drivers are advised to lock their vehicles and take valuables with them. On-site staff can be contacted for accessibility assistance or immediate safety concerns.",
+      "source_document_ids": [
+        "central-station-accessibility-security",
+        "central-station-faq",
+        "central-station-vehicle-restrictions",
+        "central-station-overview",
+        "central-station-location-access"
+      ],
+      "judgment": {
+        "correctness": 1.0,
+        "groundedness": 1.0,
+        "relevance": 1.0,
+        "rationale": "The answer accurately lists all the security and safety measures mentioned in the reference facts, including lighting, marked pedestrian paths, emergency contact points, and routine staff patrols. It also correctly advises drivers to lock vehicles and take valuables, as stated. The additional information about on-site staff being contactable for accessibility assistance or immediate safety concerns is a reasonable extension consistent with the presence of emergency contact points and staff, and,"
+      }
+    }
+  ],
+  "failed_case_ids": [],
+  "langsmith_experiment": "parking-assistant-stage1-answer-quality-e305de81"
+}
