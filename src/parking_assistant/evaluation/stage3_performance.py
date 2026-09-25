@@ -54,6 +54,11 @@ class MemoryRows:
     def get(self, reservation_id: UUID) -> ReservationRequest:
         return self._rows[reservation_id]
 
+    def get_facility_name(self, facility_id: UUID) -> str:
+        if facility_id != FACILITY_ID:
+            raise LookupError("synthetic facility not found")
+        return "Central Station Parking"
+
 
 def _memory_row(index: int) -> ReservationRequest:
     start = datetime.now(UTC) + timedelta(days=3, minutes=index)

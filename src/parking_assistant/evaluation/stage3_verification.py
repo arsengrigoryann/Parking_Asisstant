@@ -276,12 +276,12 @@ def run_stage3_verification(
             approved_line = lines[0]
             parts = approved_line.split(" | ")
             format_checks = [
-                len(parts) == 4,
+                len(parts) == 5,
                 parts[0] == "Stage Three",
                 parts[1].startswith("S3"),
-                "\N{EN DASH}" in parts[2],
-                "+00:00" in parts[2],
-                "+00:00" in parts[3],
+                parts[2] == "Central Station Parking",
+                "\N{EN DASH}" in parts[3] and "+00:00" in parts[3],
+                "+00:00" in parts[4],
             ]
             assert all(format_checks)
             assert not (root / "confirmed.txt").exists()

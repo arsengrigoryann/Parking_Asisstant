@@ -116,7 +116,9 @@ def test_real_authenticated_mcp_transport_records_once(tmp_path: Path) -> None:
         assert unauthorized.status_code == 401
         assert first.outcome == "recorded"
         assert second.outcome == "already_recorded"
-        assert len(output.read_text(encoding="utf-8").splitlines()) == 1
+        lines = output.read_text(encoding="utf-8").splitlines()
+        assert len(lines) == 1
+        assert lines[0].split(" | ")[2] == "Central Station Parking"
     finally:
         if reservation_id is not None:
             with session_scope(factory) as session:
