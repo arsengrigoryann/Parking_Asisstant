@@ -27,6 +27,11 @@ from parking_assistant.graph.identity import (
 )
 from parking_assistant.graph.runtime import PostgresApprovalGraphProvider
 from parking_assistant.graph.workflow import WorkflowStateError
+from parking_assistant.mcp.client import (
+    ApprovedReservationRecordingClient,
+    MCPRecordingError,
+    ReservationMCPClient,
+)
 from parking_assistant.reservations.submission import (
     InvalidReservationError,
     ReservationConflictError,
@@ -43,9 +48,11 @@ def create_app(
     service: ReservationSubmissionService | None = None,
     workflow_coordinator: ApprovalWorkflowCoordinator | None = None,
     admin_review_agent: AdminReviewer | None = None,
+    approved_recorder: ApprovedReservationRecordingClient | None = None,
 ) -> FastAPI:
     """Build an injectable API app without opening a database connection at import time."""
     resolved_settings = settings or get_settings()
+    owns_service = service is None
     engine: Engine | None = None
     graph_provider: PostgresApprovalGraphProvider | None = None
     if service is None:
@@ -58,6 +65,12 @@ def create_app(
             ApprovalWorkflowIdentityService(session_factory),
             graph_provider,
         )
+    if (
+        approved_recorder is None
+        and owns_service
+        and resolved_settings.mcp_server_token is not None
+    ):
+        approved_recorder = ReservationMCPClient(resolved_settings)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -106,6 +119,8 @@ def create_app(
         result = service.approve(
             reservation_id, decision_by=resolved_settings.admin_api_identity
         )
+        if approved_recorder is not None:
+            approved_recorder.record_if_approved(reservation_id)
         _resume_if_mapped(workflow_coordinator, reservation_id)
         return ReservationAdminResponse.model_validate(result)
 
@@ -151,6 +166,13 @@ def create_app(
     @application.exception_handler(WorkflowStateError)
     async def workflow_conflict(_: Request, error: WorkflowStateError) -> JSONResponse:
         return JSONResponse(status_code=409, content={"detail": str(error)})
+
+    @application.exception_handler(MCPRecordingError)
+    async def recording_unavailable(_: Request, __: MCPRecordingError) -> JSONResponse:
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "reservation approved; confirmation recording must be retried"},
+        )
 
     application.include_router(admin)
     return application

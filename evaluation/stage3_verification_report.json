@@ -1,0 +1,30 @@
+{
+  "approved_cases_passed": 2,
+  "unauthorized_cases_tested": 4,
+  "unauthorized_cases_blocked": 4,
+  "unauthorized_states": [
+    "PENDING_APPROVAL",
+    "REJECTED",
+    "CANCELLED",
+    "UNKNOWN"
+  ],
+  "duplicate_records_created": 0,
+  "concurrent_duplicate_records_created": 0,
+  "authentication_rejections": 1,
+  "configured_path_enforced": true,
+  "transport_success": true,
+  "transport_failures": 0,
+  "retry_after_temporary_failure_passed": true,
+  "file_format_checks": 6,
+  "file_format_passed": true,
+  "tool_count": 1,
+  "tool_names": [
+    "record_approved_reservation"
+  ],
+  "tool_input_fields": [
+    "reservation_id"
+  ],
+  "inspector_cli_verified": true,
+  "inspector_tool_list_verified": true,
+  "inspector_invocation_verified": true
+}

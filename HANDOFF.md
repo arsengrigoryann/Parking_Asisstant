@@ -1,92 +1,83 @@
-# Stage 2 final handoff
+# Stage 3 final handoff
 
-## 1. Final architecture
+## 1. Final Stage 3 architecture
 
-Explicit escalation submits one complete validated draft to PostgreSQL, creates/reuses one durable
-reservation/workflow/thread mapping, and starts the real PostgresSaver-backed LangGraph workflow.
-The graph pauses at `wait_for_human`. An authenticated human records the authoritative lifecycle
-decision through the administrator API; resume then re-reads PostgreSQL before routing to an
-approved, rejected, or cancelled terminal node. The LangChain administrator brief remains
-read-only, subordinate, and trace-disabled.
+The official MCP Python SDK 2.2 server exposes stateless Streamable HTTP at `/mcp` and exactly one
+tool: `record_approved_reservation(reservation_id: UUID)`. The authenticated Stage 2 administrator
+API remains the only approval authority. After committing `APPROVED`, deterministic application
+code invokes MCP with only the identifier. The server reloads PostgreSQL, validates status and
+`decision_at`, and writes the configured file under an exclusive lock.
 
 ## 2. End-to-end results
 
-Real approval and rejection paths passed. Coverage also verifies refusal to resume before a
-database decision, idempotent duplicate decision/resume, unauthenticated access rejection,
-restart/resume with rebuilt service objects, read-only administrator assistance, and a raw
-checkpoint scan that found no synthetic name or plate.
+The executable synthetic flow passed ordinary API approval/recording and approval followed by a
+temporary MCP failure and retry. Pending, rejected, cancelled, and unknown identifiers were all
+rejected without changing the file. The approved line was written exactly once, and a repeat call
+returned `already_recorded`.
 
-## 3. Performance results
+## 3. Inspector verification
 
-`evaluation/stage2_performance_report.{json,md}` contains three real samples per operation and zero
-failures. Key averages in this environment: submission 21.88 ms, administrator lookup 12.88 ms,
-OpenAI review generation 1554.35 ms, approval 16.83 ms, rejection 11.41 ms, graph start-to-interrupt
-5576.75 ms, resume 5505.36 ms, and complete approval workflow 11147.48 ms. These are presentation
-baselines, not SLAs.
+The pinned official `@modelcontextprotocol/inspector@2.5.0` CLI connected to the real authenticated
+localhost Streamable HTTP server. It observed one tool, an input schema containing only
+`reservation_id`, and a successful typed invocation. Raw output and the short-lived synthetic
+bearer token were not retained. Manual screenshot steps are documented separately.
 
-Run again with:
+## 4. Reliability and security results
 
-```powershell
-uv run python -m parking_assistant.evaluation.stage2_performance --samples 3
-uv run python -m parking_assistant.evaluation.stage2_report
-```
+Executed results: 2 approved cases passed; 4/4 unauthorized cases blocked; 0 sequential duplicate
+records; 0 concurrent duplicate records across 16 calls; 1 unauthenticated request rejected; 0
+transport failures; 6 file-format checks passed; configured-path enforcement passed; retry after a
+temporary MCP failure passed. MCP records but never authorizes reservations.
 
-## 4. Studio setup and status
+## 5. Performance results
 
-`langgraph.json` exposes the actual `approval_workflow`; `uv run langgraph dev --no-browser`
-successfully registered it. EU Studio command:
+The three-sample local baseline recorded zero failures for all five operations. Average/p50/p95
+milliseconds were: PostgreSQL authorization lookup 3.64/3.45/4.29; isolated file append
+2.49/1.91/3.54; duplicate invocation 5.78/6.21/6.25; authenticated MCP tool invocation
+56.53/30.42/103.25; full approved recording 33.38/30.46/39.79. These are environment-specific
+presentation measurements, not SLA guarantees.
 
-```powershell
-uv run langgraph dev --studio-url https://eu.smith.langchain.com
-```
+## 6. Report and evidence locations
 
-The development runtime uses its tooling checkpointer only; production/demo code still uses the
-explicit PostgresSaver provider. The currently locked transitive `langgraph-api 0.5.42` reports an
-EOL warning in the dev CLI and should be upgraded in a dedicated compatibility change.
+- `evaluation/stage3_report.md` and `.json`: final combined report.
+- `evaluation/stage3_verification_report.json`: executed E2E and Inspector evidence.
+- `evaluation/stage3_performance_report.md` and `.json`: reproducible latency baseline.
+- `docs/stage3_screenshot_checklist.md`: exact eight-shot sequence and token precautions.
+- `docs/stage3_presentation_outline.md`: concise six-slide visual presentation plan.
 
-## 5. Evidence locations
+## 7. Test results
 
-- Final report: `evaluation/stage2_report.{json,md}`
-- Performance: `evaluation/stage2_performance_report.{json,md}`
-- Executed gate totals: `evaluation/stage2_verification_report.json`
-- Screenshot plan: `docs/stage2_screenshot_checklist.md`
-- Seven-slide content: `docs/stage2_presentation_outline.md`
+- Ruff: passed.
+- Strict mypy: passed across 112 source files.
+- Default suite: 170 passed, 9 opt-in integrations skipped.
+- Real integrations: 9 passed, including PostgreSQL plus authenticated MCP Streamable HTTP.
+- Coverage is intentionally not collected and has no threshold, per user request.
 
-## 6. Final verification
+The full integration gate initially exposed that an injected reservation service still caused an
+implicit network MCP client when `.env` contained a token. Auto-wiring is now limited to the
+app-owned production construction path; injected components explicitly provide the recorder. The
+two affected tests passed focused verification, followed by all nine integrations.
 
-- Ruff: passed
-- Strict mypy: passed across 99 source files
-- Default suite: 144 passed, 8 opt-in integrations skipped
-- Branch coverage: 90.33% (90% gate passed)
-- Real integrations: 8 passed against configured OpenAI, PostgreSQL, Weaviate, FastAPI, and
-  PostgresSaver paths
-- Studio discovery: passed; `approval_workflow` registered
+## 8. Known limitations
 
-## 7. Known limitations
+- Bearer authentication is assignment/demo-grade, without accounts, scopes, rotation, or TLS.
+- LangChain's native MCP integration is currently beta; dependencies are locked for reproducibility.
+- Idempotency follows the required identical canonical-line check. Two distinct reservations with
+  exactly identical four display fields are indistinguishable in the required text format.
+- The lock design is for a shared local filesystem, not distributed/network storage.
+- Confirmed-record retention/deletion and recovery reconciliation are not automated.
 
-- Bearer-token administrator authentication is demo-grade and has no accounts/scopes.
-- Generated review text is OpenAI-dependent and never authoritative.
-- Approval does not recheck capacity, allocate, notify, record a confirmed booking, or call MCP.
-- Reservation/checkpoint retention and deletion are not automated.
-- A committed decision may require an idempotent resume retry after a later checkpointer failure.
-- Model/network latency varies by environment and is not an SLA.
+## 9. Stage 4 next work
 
-## 8. Stage 3 next task
+Stage 4 may orchestrate the complete user, human-approval, and MCP recording workflow using
+LangGraph, then add complete workflow integration/E2E and load testing. It should reuse the stable
+Stage 2 and Stage 3 boundaries rather than moving authorization into MCP or an LLM.
 
-Implement a least-privilege MCP server that records a confirmed reservation only after the existing
-administrator-approved PostgreSQL state has been independently validated. Add authorization,
-strict schemas, idempotency, and real boundary tests without moving lifecycle authority into the
-LLM or MCP client.
+## 10. Precautions Stage 4 must preserve
 
-## 9. Stage 3 precautions
+Keep PostgreSQL authoritative, keep lifecycle mutation behind authenticated human endpoints, pass
+only `reservation_id` over MCP, reload and validate every row server-side, never expose the MCP
+tool to general LLM choice, preserve post-commit retry semantics, and retain locked idempotent file
+writes. Do not place PII in graph state, Weaviate, tracing, logs, or MCP results.
 
-- Preserve PostgreSQL as lifecycle authority and PostgresSaver as workflow durability.
-- Never treat LLM prose, graph resume data, or an MCP request as proof of approval.
-- Keep customer PII out of Weaviate, graph state, interrupts, checkpoints, and normal traces.
-- Keep the administrator review agent read-only and its PII-bearing invocation trace-disabled.
-- Reuse reservation/workflow IDs and require an `APPROVED` database row before any recording side
-  effect.
-- Make confirmed-reservation recording idempotent and least-privilege; do not add notifications or
-  Stage 4 orchestration.
-
-> Stage 2 is finalized. Stage 3 may now implement the MCP server that records only administrator-approved reservations.
+> Stage 3 is finalized. Stage 4 may now orchestrate the complete user, approval, and MCP recording pipeline with LangGraph.

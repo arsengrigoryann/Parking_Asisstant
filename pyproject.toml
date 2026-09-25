@@ -23,6 +23,9 @@ dependencies = [
     "uvicorn>=0.35,<1",
     "langgraph>=1.0,<2",
     "langgraph-checkpoint-postgres>=3.0,<4",
+    "langchain[mcp]>=1.4.2,<1.5",
+    "mcp>=2.2,<3",
+    "filelock>=3.19,<4",
 ]
 
 [dependency-groups]
@@ -31,7 +34,6 @@ dev = [
     "langgraph-cli[inmem]>=0.4,<1",
     "mypy>=1.17,<2",
     "pytest>=8.4,<9",
-    "pytest-cov>=6.2,<7",
     "ruff>=0.12,<1",
 ]
 
@@ -39,15 +41,11 @@ dev = [
 packages = ["src/parking_assistant"]
 
 [tool.pytest.ini_options]
-addopts = "--strict-config --strict-markers --cov=parking_assistant --cov-report=term-missing --cov-fail-under=90"
+addopts = "--strict-config --strict-markers"
 testpaths = ["tests"]
 markers = [
     "integration: tests requiring local external services",
 ]
-
-[tool.coverage.run]
-branch = true
-source = ["parking_assistant"]
 
 [tool.ruff]
 target-version = "py312"

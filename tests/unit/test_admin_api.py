@@ -2,13 +2,15 @@
 
 import logging
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 
 from parking_assistant.api.main import create_app
 from parking_assistant.config import Settings
 from parking_assistant.db.models import ReservationRequest, ReservationRequestStatus
+from parking_assistant.mcp.client import MCPRecordingError
+from parking_assistant.mcp.recorder import ReservationRecordResult
 from parking_assistant.reservations.submission import (
     ReservationConflictError,
     ReservationNotFoundError,
@@ -143,3 +145,47 @@ def test_unknown_and_conflicting_decisions_return_safe_errors() -> None:
     assert missing.status_code == 404
     assert conflict.status_code == 409
     assert TOKEN not in conflict.text
+
+
+def test_temporary_mcp_failure_retries_after_committed_approval() -> None:
+    settings = Settings(
+        database_url="postgresql://test:test@localhost/test",
+        admin_api_token=TOKEN,
+        admin_api_identity="synthetic-admin",
+        _env_file=None,
+    )
+    service = StubService()
+
+    class FlakyRecorder:
+        calls = 0
+
+        def record_if_approved(self, reservation_id: UUID) -> ReservationRecordResult:
+            self.calls += 1
+            if self.calls == 1:
+                raise MCPRecordingError("synthetic outage")
+            return ReservationRecordResult(
+                reservation_id=reservation_id,
+                outcome="recorded",
+            )
+
+    recorder = FlakyRecorder()
+    api = TestClient(
+        create_app(
+            settings=settings,
+            service=service,  # type: ignore[arg-type]
+            approved_recorder=recorder,
+        ),
+        raise_server_exceptions=False,
+    )
+    path = f"/admin/reservations/{service.request.id}/approve"
+
+    first = api.post(path, headers=auth())
+    second = api.post(path, headers=auth())
+
+    assert first.status_code == 503
+    assert first.json()["detail"] == (
+        "reservation approved; confirmation recording must be retried"
+    )
+    assert service.request.status is ReservationRequestStatus.APPROVED
+    assert second.status_code == 200
+    assert recorder.calls == 2

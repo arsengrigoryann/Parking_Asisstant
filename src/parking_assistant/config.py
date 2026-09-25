@@ -1,6 +1,7 @@
 """Typed application configuration loaded from environment variables."""
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import AnyHttpUrl, Field, SecretStr, field_validator, model_validator
@@ -34,6 +35,11 @@ class Settings(BaseSettings):
     admin_api_token: SecretStr | None = None
     admin_api_identity: str = Field(default="demo-admin", min_length=1, max_length=100)
 
+    mcp_server_host: str = "127.0.0.1"
+    mcp_server_port: int = Field(default=8765, ge=1, le=65535)
+    mcp_server_token: SecretStr | None = None
+    mcp_reservation_file: Path = Path("data/confirmed_reservations.txt")
+
     langsmith_tracing: bool = False
     langsmith_api_key: SecretStr | None = None
     langsmith_project: str = "parking-assistant-local"
@@ -55,6 +61,21 @@ class Settings(BaseSettings):
             msg = "DATABASE_URL must use PostgreSQL"
             raise ValueError(msg)
         return value
+
+    @field_validator("mcp_server_host")
+    @classmethod
+    def validate_mcp_server_host(cls, value: str) -> str:
+        """Keep the assignment MCP endpoint bound to the local machine."""
+        if value not in {"127.0.0.1", "localhost", "::1"}:
+            msg = "MCP_SERVER_HOST must be a localhost address"
+            raise ValueError(msg)
+        return value
+
+    @property
+    def mcp_server_url(self) -> str:
+        """Return the configured local Streamable HTTP endpoint."""
+        host = f"[{self.mcp_server_host}]" if ":" in self.mcp_server_host else self.mcp_server_host
+        return f"http://{host}:{self.mcp_server_port}/mcp"
 
     @model_validator(mode="after")
     def validate_chunking(self) -> "Settings":

@@ -58,3 +58,25 @@ def test_settings_reject_invalid_chunk_overlap() -> None:
             rag_chunk_overlap=200,
             _env_file=None,
         )
+
+
+def test_mcp_settings_are_local_and_secret_safe() -> None:
+    secret = "stage3-secret"
+    settings = Settings(
+        database_url="postgresql://test:test@localhost/test",
+        mcp_server_host="127.0.0.1",
+        mcp_server_port=9876,
+        mcp_server_token=secret,
+        mcp_reservation_file="data/synthetic.txt",
+        _env_file=None,
+    )
+
+    assert settings.mcp_server_url == "http://127.0.0.1:9876/mcp"
+    assert secret not in repr(settings)
+
+    with pytest.raises(ValidationError, match="localhost"):
+        Settings(
+            database_url="postgresql://test:test@localhost/test",
+            mcp_server_host="0.0.0.0",
+            _env_file=None,
+        )

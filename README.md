@@ -1,10 +1,10 @@
-# Parking Assistant — Stage 2 complete
+# Parking Assistant — Stage 3 complete
 
 A production-oriented Python parking assistant with grounded public-information RAG,
 deterministic operational reads, typed reservation-detail collection, and defense-in-depth
-privacy controls, durable reservation requests, authenticated administrator decisions, and a
-durable LangGraph human-in-the-loop workflow. Stage 2 never autonomously confirms or books a
-reservation.
+privacy controls, durable reservation requests, authenticated administrator decisions, a
+durable LangGraph human-in-the-loop workflow, and authenticated idempotent MCP recording of
+approved reservations. No LLM can approve or record an unapproved reservation.
 
 ## Architecture
 
@@ -27,8 +27,7 @@ flowchart TD
 
 LangChain provides model, embedding, and structured-output integrations. LangSmith traces the
 sanitized normal path with meaningful routing, retrieval, generation, and dynamic-query spans.
-Notifications, MCP, confirmed-reservation recording, and final Stage 4 orchestration are
-intentionally not part of Stage 2.
+Notifications and final Stage 4 orchestration are intentionally not part of Stage 3.
 
 ```mermaid
 flowchart TD
@@ -151,7 +150,107 @@ Application code submits a complete `ReservationDetails` through
 The opaque idempotency key should be stable for one completed draft/session and contain no PII.
 The lifecycle is strictly `PENDING_APPROVAL` to one of `APPROVED`, `REJECTED`, or `CANCELLED`.
 Repeating the same decision is safe; a contradictory decision returns HTTP 409. No approved
-request triggers a booking side effect or file/MCP write.
+request becomes approved except through this authenticated human endpoint. When
+`MCP_SERVER_TOKEN` is configured, approval invokes the bounded MCP recorder after the database
+commit. A recorder failure returns HTTP 503 while leaving the approval committed; retrying the
+same approval safely retries recording.
+
+## Stage 3 MCP confirmed-reservation recorder
+
+> MCP does not authorize reservations. It only records reservations already approved by the
+> human-controlled Stage 2 lifecycle.
+
+The localhost Streamable HTTP endpoint exposes exactly one business tool:
+
+```text
+record_approved_reservation(reservation_id: UUID)
+```
+
+The request contains no PII or claimed status. The server independently loads PostgreSQL state
+and refuses unknown, pending, rejected, cancelled, or approved rows without a decision timestamp.
+Every `/mcp` request requires the `MCP_SERVER_TOKEN` bearer token; comparison is constant-time and
+the token is never logged or returned.
+
+`MCP_RESERVATION_FILE` is application configuration, never tool input. UTF-8 records use exactly
+four fields:
+
+```text
+Name | Car Number | Reservation Period | Approval Time
+Test User | DEMO123 | 2026-09-27 06:00+00:00–2026-09-27 09:00+00:00 | 2026-09-25 07:30:00+00:00
+```
+
+Timestamps are normalized to UTC. The writer creates parent directories, takes an exclusive
+cross-process lock using an adjacent `.lock` file, checks for the identical canonical line,
+appends only when absent, flushes, and calls `fsync`. The application client uses LangChain's
+native `MCPAdapter` with authenticated Streamable HTTP, but selects the one named tool in
+deterministic code; no tool is exposed to an LLM.
+
+### Stage 3 demo
+
+Set the Stage 2 and Stage 3 secrets in `.env`, migrate/seed PostgreSQL, and start the MCP server:
+
+```powershell
+uv run alembic upgrade head
+uv run python -m parking_assistant.db.seed
+uv run python -m parking_assistant.mcp.server
+```
+
+In another terminal, start the API and create a synthetic request through the existing Stage 2
+interactive flow:
+
+```powershell
+uv run uvicorn parking_assistant.api.main:app --reload
+uv run python -m parking_assistant.api.cli --interactive
+```
+
+After `:submit`, approve the returned identifier. PostgreSQL commits `APPROVED` before MCP runs:
+
+```powershell
+$adminHeaders = @{ Authorization = "Bearer $env:ADMIN_API_TOKEN" }
+$reservationId = "<RESERVATION_ID>"
+Invoke-RestMethod -Method Post -Headers $adminHeaders `
+  "http://127.0.0.1:8000/admin/reservations/$reservationId/approve"
+```
+
+Invoke the client explicitly as a retry/idempotency demonstration, display the output, invoke it
+again, and confirm the count remains one:
+
+```powershell
+uv run python -m parking_assistant.mcp.client $reservationId
+Get-Content $env:MCP_RESERVATION_FILE
+uv run python -m parking_assistant.mcp.client $reservationId
+(Get-Content $env:MCP_RESERVATION_FILE).Count
+```
+
+The repeat result is `already_recorded`.
+
+### Official MCP Inspector
+
+Use Node 22.19 or newer. Start the official Inspector with the authenticated Streamable HTTP
+endpoint (the command is pinned for repeatability):
+
+```powershell
+& "$env:ProgramFiles\nodejs\npx.cmd" --yes `
+  @modelcontextprotocol/inspector@2.5.0 --web `
+  --transport http --server-url http://127.0.0.1:8765/mcp `
+  --header "Authorization: Bearer $env:MCP_SERVER_TOKEN"
+```
+
+In Inspector, connect, open **Tools**, and verify there is exactly one business tool. Its schema
+must accept only `reservation_id`. Invoke it with an approved synthetic UUID and confirm the typed
+`recorded` or `already_recorded` outcome. Invoke the same UUID again and confirm the configured
+file line count does not change. Never include the bearer value in screenshots; crop or redact the
+header field.
+
+The executable evidence runner performs the same official Inspector CLI checks using a short-lived
+synthetic token and retains no raw token or Inspector output:
+
+```powershell
+uv run python -m parking_assistant.evaluation.stage3_verification --inspector
+```
+
+The exact eight-shot evidence sequence is in
+[`docs/stage3_screenshot_checklist.md`](docs/stage3_screenshot_checklist.md).
 
 ### Responsibility boundaries
 
@@ -163,6 +262,8 @@ request triggers a booking side effect or file/MCP write.
   resumes the same thread after a decision.
 - **The authenticated human decides:** approve/reject/cancel endpoints commit the only valid
   lifecycle transitions. The graph ignores resume claims and re-reads PostgreSQL before routing.
+- **MCP records but never authorizes:** after approval commits, the server re-reads PostgreSQL and
+  performs only the idempotent configured-file side effect.
 
 The graph state and interrupt payload contain identifiers and status only. Names, plates, requested
 times, rejection reasons, and generated review text are not checkpointed.
@@ -201,9 +302,10 @@ database, and vector-store exfiltration requests before model or data access.
 
 Administrator responses may contain reservation PII because a human decision requires it. These
 payloads are never routed to Weaviate, embeddings, general LangSmith traces, or application logs.
-PostgreSQL is the only authorized durable PII store. For the assignment demo, pending, approved,
-rejected, and cancelled records are retained; automatic deletion is not implemented. Production
-deployment must define retention and deletion periods.
+PostgreSQL and the explicitly configured confirmed-reservation text file are the authorized durable
+PII stores. Only `reservation_id` crosses the authenticated MCP boundary; MCP payloads are not sent
+to Weaviate, embeddings, normal LangSmith traces, or logs. For the assignment demo, database rows
+and confirmed records are retained; production deployment must define retention and deletion.
 
 Automated detection is defense in depth, not perfect authorization or a complete DLP system.
 
@@ -266,6 +368,22 @@ generation. Results are in
 [`evaluation/stage2_report.md`](evaluation/stage2_report.md). Network/model measurements are an
 observed baseline, not an SLA.
 
+Stage 3 has executable PostgreSQL, authenticated MCP, security, idempotency, retry, Inspector, and
+performance evidence:
+
+```powershell
+uv run python -m parking_assistant.evaluation.stage3_verification --inspector
+uv run python -m parking_assistant.evaluation.stage3_performance --samples 3
+uv run python -m parking_assistant.evaluation.stage3_report `
+  --default-tests "<observed result>" --integration-tests "<observed result>"
+```
+
+The final factual summary is [`evaluation/stage3_report.md`](evaluation/stage3_report.md), backed
+by adjacent JSON artifacts. The benchmark separates PostgreSQL authorization lookup, file append,
+duplicate invocation, MCP transport, and the full approved recording path. Its small configurable
+sample is a presentation-scale observation, not an SLA. The six-slide visual outline is
+[`docs/stage3_presentation_outline.md`](docs/stage3_presentation_outline.md).
+
 ## Verification
 
 ```powershell
@@ -274,11 +392,13 @@ uv run mypy
 uv run pytest
 
 $env:RUN_INTEGRATION_TESTS = "1"
-uv run pytest -m integration --no-cov
+uv run pytest -m integration
 ```
 
 Unit/default tests mock model output where appropriate. Opt-in integrations exercise configured
 OpenAI, PostgreSQL, and Weaviate services using public or explicitly synthetic data only.
+Pytest is intentionally configured without coverage collection or a coverage threshold; the gates
+report behavioral pass/fail results only.
 
 ## Important configuration
 
@@ -292,6 +412,10 @@ LANGSMITH_TRACING=false
 LANGSMITH_PROJECT=parking-assistant-stage1
 ADMIN_API_TOKEN=<long-random-secret>
 ADMIN_API_IDENTITY=demo-admin
+MCP_SERVER_HOST=127.0.0.1
+MCP_SERVER_PORT=8765
+MCP_SERVER_TOKEN=<long-random-secret>
+MCP_RESERVATION_FILE=data/confirmed_reservations.txt
 LANGGRAPH_STRICT_MSGPACK=true
 ```
 
@@ -303,11 +427,16 @@ LANGGRAPH_STRICT_MSGPACK=true
 - PII/prompt-injection patterns can have false positives and false negatives.
 - Durable reservation records have no automated retention/deletion yet.
 - Bearer-token authentication is demo-grade and does not provide per-user identity management.
-- Approval records a decision only; it does not recheck capacity, confirm, or book parking.
+- Approval records the human decision and MCP file confirmation only; it does not recheck
+  capacity, allocate a space, notify anyone, or create a separate booking entity.
 - The generated admin brief depends on the configured model and is presentation assistance only;
   authoritative fields are always displayed separately.
 - Checkpoint-table retention follows the demo database lifetime; no automated cleanup policy is
   implemented yet.
+- MCP bearer authentication is assignment/demo-grade, without accounts, scopes, rotation, or TLS.
+- The adjacent file lock coordinates a shared local filesystem, not distributed/network storage.
+- Confirmed-record retention and automatic reconciliation after a prolonged MCP outage are not
+  implemented.
 
-Stage 2 is finalized. Stage 3 may add a least-privilege MCP server that records only
-administrator-approved reservations while preserving the existing human-approval boundary.
+Stage 3 is finalized. Stage 4 may orchestrate the complete user, approval, and MCP recording
+pipeline while preserving these authorization boundaries.

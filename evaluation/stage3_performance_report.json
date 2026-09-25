@@ -1,0 +1,63 @@
+{
+  "requested_samples_per_operation": 3,
+  "operations": [
+    {
+      "operation": "postgresql_authorization_lookup",
+      "sample_count": 3,
+      "successes": 3,
+      "failures": 0,
+      "average_ms": 3.6418999855717025,
+      "p50_ms": 3.451300086453557,
+      "p95_ms": 4.2852399405092,
+      "network_dependent": false
+    },
+    {
+      "operation": "file_append",
+      "sample_count": 3,
+      "successes": 3,
+      "failures": 0,
+      "average_ms": 2.4902666142831245,
+      "p50_ms": 1.9083998631685972,
+      "p95_ms": 3.537490009330213,
+      "network_dependent": false
+    },
+    {
+      "operation": "duplicate_idempotent_invocation",
+      "sample_count": 3,
+      "successes": 3,
+      "failures": 0,
+      "average_ms": 5.782266613095999,
+      "p50_ms": 6.2061999924480915,
+      "p95_ms": 6.2502999091520905,
+      "network_dependent": false
+    },
+    {
+      "operation": "mcp_tool_invocation",
+      "sample_count": 3,
+      "successes": 3,
+      "failures": 0,
+      "average_ms": 56.52903330822786,
+      "p50_ms": 30.42339999228716,
+      "p95_ms": 103.25427989009766,
+      "network_dependent": true
+    },
+    {
+      "operation": "full_approved_recording_path",
+      "sample_count": 3,
+      "successes": 3,
+      "failures": 0,
+      "average_ms": 33.379166619852185,
+      "p50_ms": 30.46350018121302,
+      "p95_ms": 39.789929846301675,
+      "network_dependent": true
+    }
+  ],
+  "notes": [
+    "PostgreSQL lookup uses the configured real database.",
+    "File append isolates serialization, locking, duplicate scan, flush, and fsync using an in-memory synthetic reader.",
+    "MCP measurements use authenticated localhost Streamable HTTP and the LangChain MCP client.",
+    "Full approved recording includes transport, PostgreSQL reload, authorization, and file recording.",
+    "Measurements are presentation-scale observations in this environment, not SLA guarantees.",
+    "All database rows and temporary files are synthetic and removed after the run."
+  ]
+}
