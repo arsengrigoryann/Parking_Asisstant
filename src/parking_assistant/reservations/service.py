@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from threading import RLock
 from typing import Protocol
+from uuid import uuid4
 
 from parking_assistant.config import Settings
 from parking_assistant.reservations.models import (
@@ -57,6 +58,7 @@ class _SessionContext:
     state: ReservationSessionState
     validator: ReservationValidator
     timezone_name: str
+    submission_key: str
 
 
 class ReservationFieldExtractor(Protocol):
@@ -115,6 +117,7 @@ class ReservationCollectionService:
                         self._now,
                     ),
                     timezone_name=timezone_name,
+                    submission_key=str(uuid4()),
                 )
                 self._sessions[session_id] = context
 
@@ -130,6 +133,22 @@ class ReservationCollectionService:
                 collected_fields=collected,
             )
             context.state = context.validator.merge(context.state, extraction)
+            return self._result(context)
+
+    def submission_key(self, session_id: str) -> str:
+        """Return the session's stable opaque non-PII escalation key."""
+        with self._lock:
+            context = self._sessions.get(session_id)
+            if context is None:
+                raise ValueError("reservation session does not exist")
+            return context.submission_key
+
+    def completed_result(self, session_id: str) -> ReservationTurnResult:
+        """Return the validated complete result for explicit Stage 2 escalation."""
+        with self._lock:
+            context = self._sessions.get(session_id)
+            if context is None or not context.state.complete:
+                raise ValueError("reservation session is not complete")
             return self._result(context)
 
     def cancel(self, session_id: str) -> ReservationTurnResult:

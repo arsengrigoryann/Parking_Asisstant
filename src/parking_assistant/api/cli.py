@@ -16,11 +16,15 @@ def main() -> None:  # pragma: no cover - real CLI is covered by integration tes
 
     with create_conversation_service() as service:
         if args.interactive:
-            print("Parking Assistant interactive mode. Enter :quit to exit.")
+            print("Parking Assistant interactive mode. Enter :submit or :quit.")
             while True:
                 message = input("> ").strip()
                 if message == ":quit":
                     break
+                if message == ":submit":
+                    escalation = service.escalate_completed("cli-session")
+                    print(json.dumps(escalation.model_dump(mode="json"), indent=2))
+                    continue
                 if message:
                     print(service.handle_message(message, "cli-session").answer)
         else:

@@ -1,0 +1,126 @@
+{
+  "scope": "Stage 2 adds durable reservation requests, authenticated human decisions, read-only administrator assistance, and a restart-safe LangGraph interrupt/resume workflow. It does not book spaces or implement MCP.",
+  "architecture": [
+    "Explicit escalation submits one validated complete draft to PostgreSQL.",
+    "A durable reservation/workflow/thread mapping addresses one PostgresSaver thread.",
+    "The graph pauses at a real human interrupt and stores identifiers/status only.",
+    "The authenticated administrator API is the only lifecycle decision authority.",
+    "Resume input is non-authoritative; the graph re-reads PostgreSQL before routing.",
+    "The LangChain review component is read-only, subordinate, and trace-disabled."
+  ],
+  "performance": {
+    "requested_samples_per_operation": 3,
+    "operations": [
+      {
+        "operation": "reservation_submission",
+        "sample_count": 3,
+        "successes": 3,
+        "failures": 0,
+        "average_ms": 21.880466646204393,
+        "p50_ms": 20.39860002696514,
+        "p95_ms": 25.76043999288231,
+        "network_dependent": false
+      },
+      {
+        "operation": "workflow_start_until_interrupt",
+        "sample_count": 3,
+        "successes": 3,
+        "failures": 0,
+        "average_ms": 5576.754433413346,
+        "p50_ms": 5571.683700196445,
+        "p95_ms": 5598.425490036607,
+        "network_dependent": false
+      },
+      {
+        "operation": "admin_reservation_lookup",
+        "sample_count": 3,
+        "successes": 3,
+        "failures": 0,
+        "average_ms": 12.882033440594872,
+        "p50_ms": 13.250899966806173,
+        "p95_ms": 13.455290161073208,
+        "network_dependent": false
+      },
+      {
+        "operation": "admin_review_generation",
+        "sample_count": 3,
+        "successes": 3,
+        "failures": 0,
+        "average_ms": 1554.3499665800482,
+        "p50_ms": 1579.3442998547107,
+        "p95_ms": 1806.4477799460292,
+        "network_dependent": true
+      },
+      {
+        "operation": "approve_lifecycle_mutation",
+        "sample_count": 3,
+        "successes": 3,
+        "failures": 0,
+        "average_ms": 16.82789996266365,
+        "p50_ms": 13.56410002335906,
+        "p95_ms": 24.673789856024086,
+        "network_dependent": false
+      },
+      {
+        "operation": "reject_lifecycle_mutation",
+        "sample_count": 3,
+        "successes": 3,
+        "failures": 0,
+        "average_ms": 11.408966655532518,
+        "p50_ms": 11.495099868625402,
+        "p95_ms": 13.01268010865897,
+        "network_dependent": false
+      },
+      {
+        "operation": "graph_resume_after_decision",
+        "sample_count": 3,
+        "successes": 3,
+        "failures": 0,
+        "average_ms": 5505.360733252019,
+        "p50_ms": 5484.987099887803,
+        "p95_ms": 5541.696279821917,
+        "network_dependent": false
+      },
+      {
+        "operation": "complete_approval_workflow",
+        "sample_count": 3,
+        "successes": 3,
+        "failures": 0,
+        "average_ms": 11147.482300021997,
+        "p50_ms": 11142.940399935469,
+        "p95_ms": 11193.472610088065,
+        "network_dependent": false
+      }
+    ],
+    "notes": [
+      "Deterministic operations use the configured PostgreSQL and PostgresSaver paths.",
+      "Admin review generation calls the configured OpenAI model and is reported separately.",
+      "Network and model latency is an observed presentation baseline, not an SLA.",
+      "Complete workflow excludes review generation so model latency does not obscure orchestration.",
+      "Synthetic identities are deleted after the benchmark."
+    ]
+  },
+  "verification": {
+    "default_passed": 144,
+    "integration_skipped": 8,
+    "coverage_percent": 90.33,
+    "integration_passed": 8,
+    "approval_e2e_passed": true,
+    "rejection_e2e_passed": true,
+    "restart_durability_passed": true,
+    "checkpoint_privacy_passed": true,
+    "unauthenticated_access_rejected": true,
+    "admin_review_read_only": true,
+    "studio_graph_verified": true,
+    "ruff_passed": true,
+    "mypy_passed": true
+  },
+  "known_limitations": [
+    "Bearer-token administrator authentication is demo-grade and has no user accounts.",
+    "Generated review text depends on OpenAI and is never authoritative.",
+    "Approval records a decision but does not recheck capacity, allocate, or book a space.",
+    "Reservation and checkpoint retention require a production deletion policy.",
+    "A committed decision can require an idempotent retry if later graph resume fails.",
+    "Measured model/network latency is environment-specific and is not an SLA."
+  ]
+}

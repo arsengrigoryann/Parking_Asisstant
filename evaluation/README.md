@@ -1,4 +1,4 @@
-# Stage 1 evaluation
+# Evaluation
 
 All datasets contain only approved public information or explicitly synthetic security values.
 Do not add real customer or reservation data.
@@ -63,3 +63,23 @@ uv run python -m parking_assistant.evaluation.stage1_report
 
 This validates and combines the executed artifacts into `stage1_report.json` and
 `stage1_report.md`.
+
+## Stage 2 performance and final report
+
+After migrations and seed data are ready, run the presentation-scale administrator/workflow
+baseline once:
+
+```powershell
+uv run python -m parking_assistant.evaluation.stage2_performance --samples 3
+```
+
+It writes `stage2_performance_report.json` and `.md`. Deterministic PostgreSQL/PostgresSaver
+operations are separated from OpenAI-dependent administrator review generation. All reservation
+identities are synthetic and removed after the run; model/network measurements are not an SLA.
+
+Record the final executed gate totals in `stage2_verification_report.json`, then generate the
+validated combined report:
+
+```powershell
+uv run python -m parking_assistant.evaluation.stage2_report
+```

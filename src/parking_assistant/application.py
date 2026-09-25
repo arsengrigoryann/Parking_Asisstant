@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Protocol
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -17,7 +18,14 @@ from parking_assistant.db.queries import (
     OpeningHoursResult,
     PricingResult,
 )
+from parking_assistant.db.seed import FACILITY_ID
 from parking_assistant.db.session import create_database_engine, create_session_factory
+from parking_assistant.graph.coordinator import (
+    ApprovalWorkflowCoordinator,
+    EscalationResult,
+)
+from parking_assistant.graph.identity import ApprovalWorkflowIdentityService
+from parking_assistant.graph.runtime import PostgresApprovalGraphProvider
 from parking_assistant.guardrails.privacy import PrivacyService
 from parking_assistant.guardrails.security import (
     SECURITY_REFUSAL_MESSAGE,
@@ -42,6 +50,7 @@ from parking_assistant.reservations.service import (
     is_explicit_reservation_start,
     is_reservation_cancellation,
 )
+from parking_assistant.reservations.submission import ReservationSubmissionService
 from parking_assistant.routing import DynamicSubtype, IntentDecision, IntentRoute, IntentRouter
 
 RESERVATION_BOUNDARY_MESSAGE = (
@@ -264,10 +273,14 @@ class ConversationService:
         assistant: AssistantService,
         reservations: ReservationCollectionService,
         output_guardrail: OutputGuardrail | None = None,
+        approval_workflow: ApprovalWorkflowCoordinator | None = None,
+        facility_id: UUID = FACILITY_ID,
     ) -> None:
         self._assistant = assistant
         self._reservations = reservations
         self._output_guardrail = output_guardrail
+        self._approval_workflow = approval_workflow
+        self._facility_id = facility_id
 
     def handle_message(self, message: str, session_id: str) -> AssistantResponse:
         """Continue active reservations deterministically; otherwise use normal routing."""
@@ -297,6 +310,16 @@ class ConversationService:
             return response
         inspected = self._output_guardrail.reservation(response.answer, result.reservation)
         return response.model_copy(update={"answer": inspected.sanitized_text})
+
+    def escalate_completed(self, session_id: str) -> EscalationResult:
+        """Explicitly submit the current complete draft and start durable human review."""
+        if self._approval_workflow is None:
+            raise RuntimeError("approval workflow is not configured")
+        return self._approval_workflow.escalate_completed(
+            self._reservations.completed_result(session_id),
+            facility_id=self._facility_id,
+            idempotency_key=self._reservations.submission_key(session_id),
+        )
 
 
 def _reservation_response(result: ReservationTurnResult) -> AssistantResponse:
@@ -339,7 +362,8 @@ def create_conversation_service(
     engine = create_database_engine(resolved)
     try:
         privacy = PrivacyService(resolved.reservation_car_number_pattern)
-        dynamic = DynamicParkingService(create_session_factory(engine))
+        session_factory = create_session_factory(engine)
+        dynamic = DynamicParkingService(session_factory)
         assistant = AssistantService(
             router=IntentRouter(chat_model),
             static_answerer=LazyStaticAnswerer(resolved, chat_model),
@@ -352,7 +376,20 @@ def create_conversation_service(
             settings=resolved,
             timezone_provider=dynamic.facility_timezone,
         )
-        yield ConversationService(assistant, reservations, OutputGuardrail(privacy))
+        submission = ReservationSubmissionService(session_factory, resolved)
+        graph_provider = PostgresApprovalGraphProvider(resolved, submission)
+        graph_provider.setup()
+        approval_workflow = ApprovalWorkflowCoordinator(
+            submission,
+            ApprovalWorkflowIdentityService(session_factory),
+            graph_provider,
+        )
+        yield ConversationService(
+            assistant,
+            reservations,
+            OutputGuardrail(privacy),
+            approval_workflow,
+        )
     finally:
         engine.dispose()
 

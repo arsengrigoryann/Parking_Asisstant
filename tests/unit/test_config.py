@@ -33,6 +33,7 @@ def test_settings_repr_does_not_expose_secrets() -> None:
         openai_api_key=secret,
         langsmith_api_key=secret,
         weaviate_api_key=secret,
+        admin_api_token=secret,
         database_url=f"postgresql+psycopg://user:{secret}@localhost/db",
         _env_file=None,
     )

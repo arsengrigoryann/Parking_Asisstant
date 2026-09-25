@@ -3,6 +3,8 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import pytest
+
 from parking_assistant.application import AssistantResponse, ConversationService
 from parking_assistant.config import Settings
 from parking_assistant.reservations.models import (
@@ -100,6 +102,35 @@ def test_cancellation_clears_session_state() -> None:
 
     assert result.status is ReservationStatus.CANCELLED
     assert service.state("session") is None
+
+
+def test_escalation_key_is_stable_opaque_and_complete_result_is_guarded() -> None:
+    start = NOW + timedelta(days=1)
+    service = collection(
+        [
+            ReservationExtraction(first_name="Arsen"),
+            ReservationExtraction(
+                last_name="Grigoryan",
+                car_number="35AB123",
+                start_datetime=start,
+                end_datetime=start + timedelta(hours=2),
+            ),
+        ]
+    )
+    service.collect("session", "partial")
+    first_key = service.submission_key("session")
+
+    with pytest.raises(ValueError, match="not complete"):
+        service.completed_result("session")
+
+    service.collect("session", "complete")
+    result = service.completed_result("session")
+
+    assert result.status is ReservationStatus.COMPLETE
+    assert service.submission_key("session") == first_key
+    assert "Arsen" not in first_key
+    with pytest.raises(ValueError, match="does not exist"):
+        service.submission_key("missing")
 
 
 class FailIfCalledAssistant:

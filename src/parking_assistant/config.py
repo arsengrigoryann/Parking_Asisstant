@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     weaviate_knowledge_collection: str = "PublicParkingKnowledge"
 
     reservation_car_number_pattern: str = r"^[A-Z0-9]{4,12}$"
+    admin_api_token: SecretStr | None = None
+    admin_api_identity: str = Field(default="demo-admin", min_length=1, max_length=100)
 
     langsmith_tracing: bool = False
     langsmith_api_key: SecretStr | None = None

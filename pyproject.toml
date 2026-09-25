@@ -19,10 +19,16 @@ dependencies = [
     "langsmith>=0.4,<1",
     "presidio-analyzer>=2.2,<3",
     "presidio-anonymizer>=2.2,<3",
+    "fastapi>=0.116,<1",
+    "uvicorn>=0.35,<1",
+    "langgraph>=1.0,<2",
+    "langgraph-checkpoint-postgres>=3.0,<4",
 ]
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28,<1",
+    "langgraph-cli[inmem]>=0.4,<1",
     "mypy>=1.17,<2",
     "pytest>=8.4,<9",
     "pytest-cov>=6.2,<7",

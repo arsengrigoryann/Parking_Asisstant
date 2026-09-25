@@ -1,0 +1,15 @@
+{
+  "default_passed": 144,
+  "integration_skipped": 8,
+  "coverage_percent": 90.33,
+  "integration_passed": 8,
+  "approval_e2e_passed": true,
+  "rejection_e2e_passed": true,
+  "restart_durability_passed": true,
+  "checkpoint_privacy_passed": true,
+  "unauthenticated_access_rejected": true,
+  "admin_review_read_only": true,
+  "studio_graph_verified": true,
+  "ruff_passed": true,
+  "mypy_passed": true
+}
