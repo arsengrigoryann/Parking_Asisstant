@@ -10,6 +10,8 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql+psycopg://parking_app:parking_test@localhost:5432/parking_assistant
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -24,4 +26,3 @@ jobs:
         run: uv run mypy
       - name: Test
         run: uv run pytest
-
