@@ -2,6 +2,7 @@
   "$schema": "https://langgra.ph/schema.json",
   "dependencies": ["."],
   "graphs": {
+    "parking_master": "./src/parking_assistant/graph/master_studio.py:graph",
     "approval_workflow": "./src/parking_assistant/graph/studio.py:graph"
   },
   "env": ".env"

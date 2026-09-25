@@ -103,6 +103,14 @@ class ReservationSubmissionService:
             session.expunge(request)
             return request
 
+    def get_facility_name(self, facility_id: UUID) -> str:
+        """Return the authoritative PostgreSQL facility name for administrator display."""
+        with self._session_factory() as session:
+            facility = self._repository.get_facility_by_id(session, facility_id)
+            if facility is None:
+                raise InvalidReservationError("parking facility does not exist")
+            return facility.name
+
     def list_pending(self) -> list[ReservationRequest]:
         with self._session_factory() as session:
             requests = self._repository.list_pending(session)

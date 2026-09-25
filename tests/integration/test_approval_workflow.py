@@ -69,7 +69,14 @@ class DeterministicReviewer:
     def review(self, reservation_id: UUID) -> AdminReviewPackage:
         request = self._reservations.get(reservation_id)
         return AdminReviewPackage(
-            reservation=AdminReservationRecord.model_validate(request),
+            reservation=AdminReservationRecord.model_validate(
+                {
+                    **request.__dict__,
+                    "facility_name": self._reservations.get_facility_name(
+                        request.facility_id
+                    ),
+                }
+            ),
             brief=AdminReviewBrief(
                 summary="Synthetic restart test request ready for human review.",
                 review_notice=REVIEW_NOTICE,

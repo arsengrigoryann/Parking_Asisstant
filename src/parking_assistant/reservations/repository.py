@@ -28,6 +28,12 @@ class ReservationRepository:
             )
         )
 
+    def get_facility_by_id(
+        self, session: Session, facility_id: UUID
+    ) -> ParkingFacility | None:
+        """Load a facility for display, including one later marked inactive."""
+        return session.get(ParkingFacility, facility_id)
+
     def create_pending(self, session: Session, request: ReservationRequest) -> None:
         session.add(request)
         session.flush()

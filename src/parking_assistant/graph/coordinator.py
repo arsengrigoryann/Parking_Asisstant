@@ -57,12 +57,12 @@ class ApprovalWorkflowCoordinator:
         """Submit one complete draft and start/reuse its durable approval workflow."""
         if result.status != ReservationStatus.COMPLETE or result.reservation is None:
             raise InvalidReservationError("only a complete reservation draft can be escalated")
-        request = self._reservations.submit_for_approval(
-            result.reservation,
+        escalation = self.submit_completed(
+            result,
             facility_id=facility_id,
             idempotency_key=idempotency_key,
         )
-        workflow = self._identities.get_or_create(request.id)
+        workflow = self._identities.get_by_reservation(escalation.reservation_id)
         config = _thread_config(workflow)
         with self._graphs.open() as graph:
             snapshot = graph.get_state(config)
@@ -70,13 +70,36 @@ class ApprovalWorkflowCoordinator:
                 graph.invoke(
                     {
                         "workflow_id": str(workflow.workflow_id),
-                        "reservation_id": str(request.id),
-                        "status": request.status.value,
+                        "reservation_id": str(escalation.reservation_id),
+                        "status": escalation.status.value,
                         "admin_decision_received": False,
                         "final_message": "",
                     },
                     config=config,
                 )
+        return escalation
+
+    def submit_completed(
+        self,
+        result: ReservationTurnResult,
+        *,
+        facility_id: UUID,
+        idempotency_key: str,
+        thread_id: UUID | None = None,
+    ) -> EscalationResult:
+        """Persist a complete draft and identity without starting a graph.
+
+        Stage 4 uses this boundary before entering the embedded approval subgraph. The
+        original Stage 2 ``escalate_completed`` behavior remains unchanged.
+        """
+        if result.status != ReservationStatus.COMPLETE or result.reservation is None:
+            raise InvalidReservationError("only a complete reservation draft can be escalated")
+        request = self._reservations.submit_for_approval(
+            result.reservation,
+            facility_id=facility_id,
+            idempotency_key=idempotency_key,
+        )
+        workflow = self._identities.get_or_create(request.id, thread_id=thread_id)
         return EscalationResult(
             reservation_id=request.id,
             workflow_id=workflow.workflow_id,

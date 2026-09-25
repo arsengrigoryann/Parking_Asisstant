@@ -24,14 +24,23 @@ class ApprovalWorkflowIdentityService:
         self._session_factory = session_factory
         self._repository = repository or ApprovalWorkflowRepository()
 
-    def get_or_create(self, reservation_id: UUID) -> ApprovalWorkflow:
+    def get_or_create(
+        self,
+        reservation_id: UUID,
+        *,
+        thread_id: UUID | None = None,
+    ) -> ApprovalWorkflow:
+        """Return the mapping, optionally binding a caller-owned safe graph thread."""
         session = self._session_factory()
         try:
             existing = self._repository.get_by_reservation(session, reservation_id)
             if existing is not None:
                 session.expunge(existing)
                 return existing
-            workflow = ApprovalWorkflow(reservation_id=reservation_id)
+            workflow = ApprovalWorkflow(
+                reservation_id=reservation_id,
+                **({"thread_id": thread_id} if thread_id is not None else {}),
+            )
             self._repository.create(session, workflow)
             session.commit()
             session.expunge(workflow)

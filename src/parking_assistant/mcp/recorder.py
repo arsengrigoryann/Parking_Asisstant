@@ -20,6 +20,8 @@ class ReservationReader(Protocol):
 
     def get(self, reservation_id: UUID) -> ReservationRequest: ...
 
+    def get_facility_name(self, facility_id: UUID) -> str: ...
+
 
 class ReservationNotApprovedError(RuntimeError):
     """Raised when PostgreSQL does not authorize confirmation recording."""
@@ -61,15 +63,31 @@ class ApprovedReservationRecorder:
         if reservation.decision_at is None:
             raise InvalidApprovalError("approved reservation has no decision timestamp")
 
-        line = serialize_approved_reservation(reservation)
+        facility_name = self._reservations.get_facility_name(reservation.facility_id)
+        line = serialize_approved_reservation(reservation, facility_name)
+        legacy_line = _serialize_legacy_reservation(reservation)
         self._output_path.parent.mkdir(parents=True, exist_ok=True)
         lock = FileLock(f"{self._output_path}.lock")
         with lock, self._output_path.open("a+", encoding="utf-8", newline="") as handle:
             handle.seek(0)
-            if line in handle.read().splitlines():
+            lines = handle.read().splitlines()
+            if line in lines:
                 return ReservationRecordResult(
                     reservation_id=reservation_id,
                     outcome="already_recorded",
+                )
+            if legacy_line in lines:
+                # Upgrade the exact pre-facility record in place so retry does not
+                # append a second logical record for the same reservation.
+                lines[lines.index(legacy_line)] = line
+                handle.seek(0)
+                handle.truncate()
+                handle.write("".join(f"{existing}\n" for existing in lines))
+                handle.flush()
+                os.fsync(handle.fileno())
+                return ReservationRecordResult(
+                    reservation_id=reservation_id,
+                    outcome="recorded",
                 )
             handle.seek(0, os.SEEK_END)
             handle.write(f"{line}\n")
@@ -78,14 +96,34 @@ class ApprovedReservationRecorder:
         return ReservationRecordResult(reservation_id=reservation_id, outcome="recorded")
 
 
-def serialize_approved_reservation(reservation: ReservationRequest) -> str:
+def serialize_approved_reservation(
+    reservation: ReservationRequest,
+    facility_name: str,
+) -> str:
     """Serialize authoritative values as a stable, single-line UTC record."""
     if reservation.decision_at is None:
         raise InvalidApprovalError("approved reservation has no decision timestamp")
     name = f"{reservation.first_name} {reservation.last_name}"
-    for value in (name, reservation.car_number):
+    normalized_facility = facility_name.strip()
+    if not normalized_facility:
+        raise InvalidApprovalError("parking facility has no display name")
+    for value in (name, reservation.car_number, normalized_facility):
         if any(separator in value for separator in ("|", "\r", "\n")):
             raise InvalidApprovalError("reservation contains unsafe file delimiters")
+    start = _utc(reservation.start_datetime).isoformat(sep=" ", timespec="minutes")
+    end = _utc(reservation.end_datetime).isoformat(sep=" ", timespec="minutes")
+    approval = _utc(reservation.decision_at).isoformat(sep=" ", timespec="seconds")
+    return (
+        f"{name} | {reservation.car_number} | {normalized_facility} | "
+        f"{start}\N{EN DASH}{end} | {approval}"
+    )
+
+
+def _serialize_legacy_reservation(reservation: ReservationRequest) -> str:
+    """Return the old four-field line solely for exact migration matching."""
+    if reservation.decision_at is None:
+        raise InvalidApprovalError("approved reservation has no decision timestamp")
+    name = f"{reservation.first_name} {reservation.last_name}"
     start = _utc(reservation.start_datetime).isoformat(sep=" ", timespec="minutes")
     end = _utc(reservation.end_datetime).isoformat(sep=" ", timespec="minutes")
     approval = _utc(reservation.decision_at).isoformat(sep=" ", timespec="seconds")

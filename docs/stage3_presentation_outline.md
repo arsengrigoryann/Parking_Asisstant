@@ -28,7 +28,7 @@
 
 ## 5. Real Inspector and file evidence
 
-- Screenshots: approved invocation result and four-field text record.
+- Screenshots: approved invocation result and five-field text record including facility name.
 - Paired screenshot: repeat invocation reports `already_recorded`, line count remains one.
 - Optional inset: pending invocation rejected with the file unchanged.
 

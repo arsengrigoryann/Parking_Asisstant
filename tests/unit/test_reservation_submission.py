@@ -76,6 +76,7 @@ def test_complete_submission_creates_pending_uuid_and_timestamps(
     assert request.status == ReservationRequestStatus.PENDING_APPROVAL
     assert request.created_at is not None
     assert request.updated_at is not None
+    assert service.get_facility_name(facility_id) == "Synthetic Parking"
     with factory() as session:
         stored = session.get(ReservationRequest, request.id)
         assert stored is not None

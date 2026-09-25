@@ -30,6 +30,10 @@ class Rows:
         except KeyError as error:
             raise ReservationNotFoundError("reservation request not found") from error
 
+    def get_facility_name(self, facility_id: UUID) -> str:
+        assert any(row.facility_id == facility_id for row in self.rows.values())
+        return "Central Station Parking"
+
 
 def row(
     status: ReservationRequestStatus = ReservationRequestStatus.APPROVED,
@@ -68,10 +72,31 @@ def test_approved_record_has_exact_format_and_duplicate_is_idempotent(tmp_path: 
     assert first.outcome == "recorded"
     assert second.outcome == "already_recorded"
     assert (tmp_path / "nested" / "confirmed.txt").read_text(encoding="utf-8") == (
-        "Test User | DEMO123 | "
+        "Test User | DEMO123 | Central Station Parking | "
         "2026-09-27 06:00+00:00\N{EN DASH}2026-09-27 09:00+00:00 | "
         "2026-09-25 07:30:00+00:00\n"
     )
+
+
+def test_retry_upgrades_matching_legacy_line_without_duplicate(tmp_path: Path) -> None:
+    reservation = row()
+    output = tmp_path / "nested" / "confirmed.txt"
+    output.parent.mkdir(parents=True)
+    output.write_text(
+        "Test User | DEMO123 | "
+        "2026-09-27 06:00+00:00\N{EN DASH}2026-09-27 09:00+00:00 | "
+        "2026-09-25 07:30:00+00:00\n",
+        encoding="utf-8",
+    )
+
+    result = ApprovedReservationRecorder(
+        Rows({reservation.id: reservation}), output
+    ).record(reservation.id)
+
+    lines = output.read_text(encoding="utf-8").splitlines()
+    assert result.outcome == "recorded"
+    assert len(lines) == 1
+    assert lines[0].split(" | ")[2] == "Central Station Parking"
 
 
 @pytest.mark.parametrize(
@@ -137,13 +162,18 @@ def test_output_path_is_constructor_configuration_only(tmp_path: Path) -> None:
 def test_serializer_rejects_delimiters_and_handles_sqlite_naive_utc() -> None:
     missing_timestamp = row(decision_at=None)
     with pytest.raises(InvalidApprovalError, match="no decision timestamp"):
-        serialize_approved_reservation(missing_timestamp)
+        serialize_approved_reservation(missing_timestamp, "Central Station Parking")
 
     unsafe = row()
     unsafe.first_name = "Unsafe|Name"
     with pytest.raises(InvalidApprovalError, match="unsafe file delimiters"):
-        serialize_approved_reservation(unsafe)
+        serialize_approved_reservation(unsafe, "Central Station Parking")
+
+    with pytest.raises(InvalidApprovalError, match="unsafe file delimiters"):
+        serialize_approved_reservation(row(), "Unsafe|Facility")
 
     naive = row()
     naive.start_datetime = naive.start_datetime.replace(tzinfo=None)
-    assert "2026-09-27 06:00+00:00" in serialize_approved_reservation(naive)
+    assert "2026-09-27 06:00+00:00" in serialize_approved_reservation(
+        naive, "Central Station Parking"
+    )

@@ -59,7 +59,7 @@ If the header value is visible, mask it before capturing. Never paste the token 
 
 5. **Resulting text file**
    - Action: run `Get-Content $env:MCP_RESERVATION_FILE`.
-   - Expected: one four-field line: `Name | Car Number | Reservation Period | Approval Time`.
+   - Expected: one five-field line: `Name | Car Number | Facility | Reservation Period | Approval Time`.
    - Why: demonstrates the required side effect and canonical format.
 
 6. **Repeated invocation without a duplicate**

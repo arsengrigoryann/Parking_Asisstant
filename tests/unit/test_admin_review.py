@@ -59,6 +59,10 @@ class ReadOnlyReservations:
         self.get_calls += 1
         return self.request
 
+    def get_facility_name(self, facility_id: UUID) -> str:
+        assert facility_id == self.request.facility_id
+        return "Synthetic Central Parking"
+
 
 def test_admin_agent_loads_by_id_uses_structured_output_and_disables_tracing(
     monkeypatch: pytest.MonkeyPatch,
@@ -87,8 +91,12 @@ def test_admin_agent_loads_by_id_uses_structured_output_and_disables_tracing(
     assert tracing_values == [False]
     assert package.reservation.first_name == "Demo"
     assert package.reservation.car_number == "TEST123"
+    assert package.reservation.facility_name == "Synthetic Central Parking"
     assert package.brief.summary != package.reservation.model_dump_json()
     assert reviewer.messages is not None
+    prompt = str(reviewer.messages)
+    assert "Synthetic Central Parking" in prompt
+    assert str(reservations.request.facility_id) not in prompt
 
 
 def test_review_schema_rejects_recommendations_and_guarantees() -> None:

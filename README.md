@@ -1,10 +1,11 @@
-# Parking Assistant — Stage 3 complete
+# Parking Assistant — Stage 4A complete
 
 A production-oriented Python parking assistant with grounded public-information RAG,
 deterministic operational reads, typed reservation-detail collection, and defense-in-depth
 privacy controls, durable reservation requests, authenticated administrator decisions, a
 durable LangGraph human-in-the-loop workflow, and authenticated idempotent MCP recording of
-approved reservations. No LLM can approve or record an unapproved reservation.
+approved reservations, a unified master LangGraph, and an adapted official LangChain Agent Chat
+UI. No LLM can approve or record an unapproved reservation.
 
 ## Architecture
 
@@ -27,7 +28,21 @@ flowchart TD
 
 LangChain provides model, embedding, and structured-output integrations. LangSmith traces the
 sanitized normal path with meaningful routing, retrieval, generation, and dynamic-query spans.
-Notifications and final Stage 4 orchestration are intentionally not part of Stage 3.
+Stage 4A adds a top-level graph without moving business rules into graph nodes:
+
+```mermaid
+flowchart TD
+    U[Non-durable user turn] --> R[route_request]
+    R --> S[Stage 1 static RAG]
+    R --> D[Stage 1 dynamic SQL]
+    R --> C[Stage 1 reservation collection]
+    C --> P[submit_for_approval]
+    P --> H[Stage 2 approval subgraph interrupt]
+    H --> V[verify PostgreSQL decision]
+    V -->|rejected/cancelled| F[final response]
+    V -->|approved| M[Stage 3 MCP recorder]
+    M --> F
+```
 
 ```mermaid
 flowchart TD
@@ -102,6 +117,47 @@ calls the deterministic submission service once using the session's stable opaqu
 durable workflow identity, and pauses the LangGraph workflow for real human review. It does not
 check interval availability, confirm, or book the request.
 
+## Stage 4A unified local demo
+
+Raw user messages travel through non-durable LangGraph runtime context. Master checkpoints contain
+only opaque identifiers, route/status values, missing-field names, recording state, and safe
+messages. PostgreSQL remains authoritative for reservation PII and lifecycle state.
+
+Start infrastructure, the authenticated MCP server, and the unified API:
+
+```powershell
+docker compose up -d
+uv run alembic upgrade head
+uv run python -m parking_assistant.db.seed
+uv run python -m parking_assistant.rag.ingestion
+uv run python -m parking_assistant.mcp.server
+
+# Separate terminal
+uv run uvicorn parking_assistant.api.unified:app --reload
+```
+
+Start the adapted official Agent Chat UI. Its Next.js server is the BFF, so the admin bearer token
+is never included in browser source or URLs.
+
+```powershell
+Copy-Item frontend/.env.example frontend/.env
+cd frontend
+corepack pnpm install --frozen-lockfile
+corepack pnpm dev
+```
+
+Open `http://localhost:3000`. The interface supports static/dynamic questions, multi-turn
+reservation collection, pending human review, authenticated approve/reject controls, status
+refresh, and MCP recording retry. The review panel separates authoritative database fields from
+non-authoritative generated assistance.
+
+Studio exposes both the master graph and focused Stage 2 graph:
+
+```powershell
+$env:LANGGRAPH_STRICT_MSGPACK = "true"
+uv run langgraph dev --no-browser
+```
+
 ## Stage 2 approval workflow and administrator API
 
 Set a long random `ADMIN_API_TOKEN` and a non-secret `ADMIN_API_IDENTITY` in `.env`, then run:
@@ -150,10 +206,11 @@ Application code submits a complete `ReservationDetails` through
 The opaque idempotency key should be stable for one completed draft/session and contain no PII.
 The lifecycle is strictly `PENDING_APPROVAL` to one of `APPROVED`, `REJECTED`, or `CANCELLED`.
 Repeating the same decision is safe; a contradictory decision returns HTTP 409. No approved
-request becomes approved except through this authenticated human endpoint. When
-`MCP_SERVER_TOKEN` is configured, approval invokes the bounded MCP recorder after the database
-commit. A recorder failure returns HTTP 503 while leaving the approval committed; retrying the
-same approval safely retries recording.
+request becomes approved except through this authenticated human endpoint. In the standalone
+Stage 3 API composition, configuring `MCP_SERVER_TOKEN` keeps the original post-commit recorder
+behavior. In the unified Stage 4 application, the approve endpoint commits the decision and resumes
+the graph; the graph is the single MCP owner. Recording failure leaves approval committed and
+exposes an authenticated retry path.
 
 ## Stage 3 MCP confirmed-reservation recorder
 
@@ -172,16 +229,17 @@ Every `/mcp` request requires the `MCP_SERVER_TOKEN` bearer token; comparison is
 the token is never logged or returned.
 
 `MCP_RESERVATION_FILE` is application configuration, never tool input. UTF-8 records use exactly
-four fields:
+five fields. Facility name is reloaded from PostgreSQL, never accepted from the MCP caller:
 
 ```text
-Name | Car Number | Reservation Period | Approval Time
-Test User | DEMO123 | 2026-09-27 06:00+00:00–2026-09-27 09:00+00:00 | 2026-09-25 07:30:00+00:00
+Name | Car Number | Facility | Reservation Period | Approval Time
+Test User | DEMO123 | Central Station Parking | 2026-09-27 06:00+00:00–2026-09-27 09:00+00:00 | 2026-09-25 07:30:00+00:00
 ```
 
 Timestamps are normalized to UTC. The writer creates parent directories, takes an exclusive
-cross-process lock using an adjacent `.lock` file, checks for the identical canonical line,
-appends only when absent, flushes, and calls `fsync`. The application client uses LangChain's
+cross-process lock using an adjacent `.lock` file, upgrades an exact legacy four-field line in
+place, checks for the identical canonical line, appends only when absent, flushes, and calls
+`fsync`. The application client uses LangChain's
 native `MCPAdapter` with authenticated Streamable HTTP, but selects the one named tool in
 deterministic code; no tool is exposed to an LLM.
 
@@ -438,5 +496,5 @@ LANGGRAPH_STRICT_MSGPACK=true
 - Confirmed-record retention and automatic reconciliation after a prolonged MCP outage are not
   implemented.
 
-Stage 3 is finalized. Stage 4 may orchestrate the complete user, approval, and MCP recording
-pipeline while preserving these authorization boundaries.
+Stage 4A is complete. Stage 4B is limited to final validation, complete load/E2E evidence, final
+reporting, documentation cleanup, architecture diagrams, and presentation work.

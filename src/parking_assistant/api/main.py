@@ -2,7 +2,7 @@
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Annotated
+from typing import Annotated, Any, Protocol
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, FastAPI, Request
@@ -42,11 +42,15 @@ from parking_assistant.reservations.submission import (
 bearer = HTTPBearer(auto_error=False)
 
 
+class ResumableWorkflow(Protocol):
+    def resume_for_reservation(self, reservation_id: UUID) -> dict[str, Any]: ...
+
+
 def create_app(
     *,
     settings: Settings | None = None,
     service: ReservationSubmissionService | None = None,
-    workflow_coordinator: ApprovalWorkflowCoordinator | None = None,
+    workflow_coordinator: ResumableWorkflow | None = None,
     admin_review_agent: AdminReviewer | None = None,
     approved_recorder: ApprovedReservationRecordingClient | None = None,
 ) -> FastAPI:
@@ -182,7 +186,7 @@ app = create_app()
 
 
 def _resume_if_mapped(
-    coordinator: ApprovalWorkflowCoordinator | None,
+    coordinator: ResumableWorkflow | None,
     reservation_id: UUID,
 ) -> None:
     """Resume Stage 2B workflows while preserving decisions for legacy Stage 2A rows."""

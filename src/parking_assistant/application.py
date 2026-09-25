@@ -321,6 +321,22 @@ class ConversationService:
             idempotency_key=self._reservations.submission_key(session_id),
         )
 
+    def submit_completed(
+        self,
+        session_id: str,
+        *,
+        thread_id: UUID,
+    ) -> EscalationResult:
+        """Submit a complete draft for an enclosing Stage 4 graph to orchestrate."""
+        if self._approval_workflow is None:
+            raise RuntimeError("approval workflow is not configured")
+        return self._approval_workflow.submit_completed(
+            self._reservations.completed_result(session_id),
+            facility_id=self._facility_id,
+            idempotency_key=self._reservations.submission_key(session_id),
+            thread_id=thread_id,
+        )
+
 
 def _reservation_response(result: ReservationTurnResult) -> AssistantResponse:
     return AssistantResponse(
